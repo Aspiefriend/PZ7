@@ -46,5 +46,6 @@ namespace PZ6.Models
         public virtual DbSet<sysdiagrams> sysdiagrams { get; set; }
         public virtual DbSet<TypesMaterials> TypesMaterials { get; set; }
         public virtual DbSet<Workshops> Workshops { get; set; }
+        public virtual DbSet<LoginHistory> LoginHistory { get; set; }
     }
 }

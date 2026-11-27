@@ -4,7 +4,7 @@
   <edmx:Runtime>
     <!-- SSDL content -->
     <edmx:StorageModels>
-      <Schema Namespace="Хранилище ateilerModel" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
+    <Schema Namespace="Хранилище ateilerModel" Provider="System.Data.SqlClient" ProviderManifestToken="2012" Alias="Self" xmlns:store="http://schemas.microsoft.com/ado/2007/12/edm/EntityStoreSchemaGenerator" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm/ssdl">
         <EntityType Name="AccountRoles">
           <Key>
             <PropertyRef Name="id_account_role" />
@@ -78,6 +78,16 @@
           <Property Name="fitting_date" Type="datetime" Nullable="false" />
           <Property Name="notes" Type="nvarchar" MaxLength="200" />
           <Property Name="is_done" Type="bit" Nullable="false" />
+        </EntityType>
+        <EntityType Name="LoginHistory">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="int" StoreGeneratedPattern="Identity" Nullable="false" />
+          <Property Name="UserLogin" Type="nvarchar" MaxLength="100" Nullable="false" />
+          <Property Name="AttemptTime" Type="datetime" Nullable="false" />
+          <Property Name="IsSuccess" Type="bit" Nullable="false" />
+          <Property Name="FailReason" Type="nvarchar" MaxLength="200" />
         </EntityType>
         <EntityType Name="Materials">
           <Key>
@@ -492,6 +502,7 @@
           <EntitySet Name="CustomModels" EntityType="Self.CustomModels" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Employees" EntityType="Self.Employees" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Fittings" EntityType="Self.Fittings" Schema="dbo" store:Type="Tables" />
+          <EntitySet Name="LoginHistory" EntityType="Self.LoginHistory" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Materials" EntityType="Self.Materials" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="Models" EntityType="Self.Models" Schema="dbo" store:Type="Tables" />
           <EntitySet Name="OrderEmployees" EntityType="Self.OrderEmployees" Schema="dbo" store:Type="Tables" />
@@ -595,8 +606,7 @@
             <End Role="Materials" EntitySet="Materials" />
           </AssociationSet>
         </EntityContainer>
-      </Schema>
-    </edmx:StorageModels>
+      </Schema></edmx:StorageModels>
     <!-- CSDL content -->
     <edmx:ConceptualModels>
       <Schema Namespace="ateilerModel" Alias="Self" annotation:UseStrongSpatialTypes="false" xmlns:annotation="http://schemas.microsoft.com/ado/2009/02/edm/annotation" xmlns:customannotation="http://schemas.microsoft.com/ado/2013/11/edm/customannotation" xmlns="http://schemas.microsoft.com/ado/2009/11/edm">
@@ -1233,7 +1243,18 @@
             <End Role="Statuses" EntitySet="Statuses" />
             <End Role="OrderStatusHistory" EntitySet="OrderStatusHistory" />
           </AssociationSet>
+          <EntitySet Name="LoginHistory" EntityType="ateilerModel.LoginHistory" />
         </EntityContainer>
+        <EntityType Name="LoginHistory">
+          <Key>
+            <PropertyRef Name="Id" />
+          </Key>
+          <Property Name="Id" Type="Int32" Nullable="false" annotation:StoreGeneratedPattern="Identity" />
+          <Property Name="UserLogin" Type="String" Nullable="false" MaxLength="100" FixedLength="false" Unicode="true" />
+          <Property Name="AttemptTime" Type="DateTime" Nullable="false" Precision="3" />
+          <Property Name="IsSuccess" Type="Boolean" Nullable="false" />
+          <Property Name="FailReason" Type="String" MaxLength="200" FixedLength="false" Unicode="true" />
+        </EntityType>
       </Schema>
     </edmx:ConceptualModels>
     <!-- C-S mapping content -->
@@ -1473,6 +1494,17 @@
                 <ScalarProperty Name="id_workshop" ColumnName="id_workshop" />
                 <ScalarProperty Name="workshop_name" ColumnName="workshop_name" />
                 <ScalarProperty Name="description" ColumnName="description" />
+              </MappingFragment>
+            </EntityTypeMapping>
+          </EntitySetMapping>
+          <EntitySetMapping Name="LoginHistory">
+            <EntityTypeMapping TypeName="ateilerModel.LoginHistory">
+              <MappingFragment StoreEntitySet="LoginHistory">
+                <ScalarProperty Name="FailReason" ColumnName="FailReason" />
+                <ScalarProperty Name="IsSuccess" ColumnName="IsSuccess" />
+                <ScalarProperty Name="AttemptTime" ColumnName="AttemptTime" />
+                <ScalarProperty Name="UserLogin" ColumnName="UserLogin" />
+                <ScalarProperty Name="Id" ColumnName="Id" />
               </MappingFragment>
             </EntityTypeMapping>
           </EntitySetMapping>

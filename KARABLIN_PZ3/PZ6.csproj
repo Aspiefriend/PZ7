@@ -67,7 +67,11 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="Models\LoginHistory.cs">
+      <DependentUpon>Atelier.tt</DependentUpon>
+    </Compile>
     <Compile Include="Services\CaptchaGenerator.cs" />
+    <Compile Include="Services\Lock.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

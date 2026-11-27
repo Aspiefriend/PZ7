@@ -1,7 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data.Entity;
 using System.Linq;
+using System.Reflection;
+using System.Security.Cryptography;
+using System.Security.Principal;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -12,10 +17,9 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using PZ6.Models;
 using PZ6.Services;
-using System.Data.Entity;
-using System.Reflection;
 
 namespace PZ6.Pages
 {
@@ -25,10 +29,17 @@ namespace PZ6.Pages
     public partial class Autho : Page
     {
         private int click;
+        private DispatcherTimer timer;
         public Autho()
         {
             InitializeComponent();
-            click = 0;
+            timer = new DispatcherTimer();
+            timer.Interval = TimeSpan.FromSeconds(1);
+            if (Lock.isLocked)
+            {
+                StartTimer();
+            }
+            timer.Tick += HandlerTimer;
         }
         private void GenerateCaptcha()
         {
@@ -45,6 +56,9 @@ namespace PZ6.Pages
         }
         private void btnEnterGuests_Click(object sender, RoutedEventArgs e)
         {
+            ClearInput();
+            tblCaptcha.Visibility = Visibility.Hidden;
+            tbCaptcha.Visibility = Visibility.Hidden;
             NavigationService.Navigate(new Client(null,null));
         }
         private List<string> GetRoleNames(Accounts account)
@@ -64,101 +78,207 @@ namespace PZ6.Pages
 
         private void btnEnter_Click(object sender, RoutedEventArgs e)
         {
-            string login = txtLogin.Text.Trim();
-            string password = txtPassword.Password.Trim();
-            string passwordHash = Hash.HashPasswords(password);
-            click += 1;
-
             try
             {
-                using (var db = Helper.GetContext())
+                string login = txtLogin.Text.Trim();
+                string password = txtPassword.Password.Trim();
+                if (Lock.isLocked)
                 {
-
-                    var account = db.Accounts.Where(a => a.login == login && a.password_hash == passwordHash).FirstOrDefault();
-
-                    if(click == 1) 
-                    {
-                        if (account != null)
-                        {
-                            var roleNames = GetRoleNames(account);
-
-                            if (roleNames.Count == 1)
-                            {
-                                LoadPage(account, roleNames[0]);
-                            }
-                            else
-                            {
-                                MessageBoxResult result = MessageBox.Show("Войти как сотрудник?", "Выбор роли", MessageBoxButton.YesNo);
-
-                                switch (result)
-                                {
-                                    case MessageBoxResult.Yes:
-                                        LoadPage(account, roleNames.Where(rn => rn == "Сотрудник").FirstOrDefault());
-                                        break;
-                                    case MessageBoxResult.No:
-                                        LoadPage(account, roleNames.Where(rn => rn == "Клиент").FirstOrDefault());
-                                        break;
-
-                                }
-                            }
-                        }
-                        else
-                        {
-                            MessageBox.Show("Вы ввели логин или пароль неверно. Придётся пройти капчу");
-                            GenerateCaptcha();
-                            ClearInput();
-                        }
-                    }
-                    else
-                    {
-
-                        if(account != null && tblCaptcha.Text == tbCaptcha.Text)
-                        {
-                            var roleNames = GetRoleNames(account);
-
-                            if (roleNames.Count == 1)
-                            {
-                                LoadPage(account, roleNames[0]);
-                            }
-                            else
-                            {
-                                MessageBoxResult result = MessageBox.Show("Войти как сотрудник?", "Выбор роли", MessageBoxButton.YesNo);
-
-                                switch (result)
-                                {
-                                    case MessageBoxResult.Yes:
-                                        LoadPage(account, roleNames.Where(rn => rn == "Сотрудник").FirstOrDefault());
-                                        break;
-                                    case MessageBoxResult.No:
-                                        LoadPage(account, roleNames.Where(rn => rn == "Клиент").FirstOrDefault());
-                                        break;
-
-                                }
-                            }
-
-                        }
-                        else {
-                            MessageBox.Show("Вы ввели неправильно или логин, или пароль, или капчу. Повторите ");
-                            ClearInput();
-                        
-                        }
-                    }
-
+                    return;
 
                 }
+                if (tblCaptcha.Text != tbCaptcha.Text && tblCaptcha.Visibility!=Visibility.Collapsed)
+                {
+                    MessageBox.Show("Вы неправильно ввели капчу");
+                    FailHandler();
+                }
+
+                var account = CheckUserLogin(login);
+                if (account == null)
+                {
+                    MessageBox.Show("Неверный логин или пароль");
+                    AddToLoginHistory(login, false, "Аккаунта с таким логином не существует");
+                    FailHandler();
+                    return;
+
+                }
+                string hashPassword = Hash.HashPasswords(password);
+                account = CheckUserPassword(login, hashPassword);
+
+                if (account == null)
+                {
+                    MessageBox.Show("Неверный логин или пароль");
+                    AddToLoginHistory(login, false, "Неверный пароль");
+                    FailHandler();
+                    return;
+
+                }
+                AddToLoginHistory(login, true, null);
+                SuccessHandler(account);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Ошибка в работе с Базой Данных. {ex.Message}");
+                MessageBox.Show($"Ошибка работы с базой данных {ex} ");
+
 
             }
 
+
+        }
+        
+        
+        public void AddToLoginHistory(string login,bool isSuccess, string reason = null)
+        {
+
+            using(var db= Helper.GetContext())
+            {
+
+                if(reason == null)
+                {
+                    LoginHistory newLog = new LoginHistory
+                    {
+                        UserLogin = login,
+                        IsSuccess = isSuccess,
+                        FailReason = reason,
+                    };
+
+                }
+
+            }
+            
+
+
+        }
+        public void StartTimer()
+        {
+            txtLogin.IsEnabled = false;
+            txtPassword.IsEnabled = false;
+            btnEnter.IsEnabled = false;
+            tbCaptcha.Visibility = Visibility.Hidden;
+            tblCaptcha.Visibility = Visibility.Hidden;
+            int secondsToAdd;
+            if (Lock.LockoutEndTime == null)
+            {
+                secondsToAdd = (int)Math.Pow(10, Lock.LockoutLevel);
+                Lock.LockoutEndTime = DateTime.Now.AddSeconds(secondsToAdd);
+                MessageBox.Show($"Вход заблокирован на {secondsToAdd} секунд ");
+
+            }
+            tbTime.Text = $"Блокировка до {Lock.LockoutEndTime}";
+            timer.Start();
+
+
             
         }
+        public void HandlerTimer(object sender, EventArgs e)
+        {
+            int seconds = Lock.GetSeconds();
+            if (seconds == 0)
+            {
+                MessageBox.Show("Блокировка закончилась");
+                EndTimer();
 
+            }
+            tbLockout.Text = $"Вход был заблокирован. Осталось {seconds} секунд";
+
+
+        }
+        public void EndTimer()
+        {
+            timer.Stop();
+            txtLogin.IsEnabled = true;
+            txtPassword.IsEnabled = true;
+            btnEnter.IsEnabled = true;
+            tbLockout.Visibility = Visibility.Collapsed;
+            if (Lock.FailCount == 5)
+            {
+                Lock.Reset();
+                MessageBox.Show("Счётчик неудачных попыток сбросился");
+                tblCaptcha.Visibility = Visibility.Collapsed;
+            }
+            else
+            {
+                Lock.FailCount++;
+                Lock.LockoutLevel++;
+                
+            }
+            
+
+
+        }
+        public void FailHandler()
+        {
+            Lock.FailCount++;
+            var count = Lock.FailCount;
+            ClearInput();
+            GenerateCaptcha();
+            if(count < 3)
+            {
+                tbWarning.Visibility = Visibility.Visible;
+                tbWarning.Text = $"У вас осталось {3 - count} попыток";
+                return;
+         
+
+            }
+            else
+            {
+                tbWarning.Visibility = Visibility.Collapsed;
+                StartTimer();
+
+
+            }
+        }
+        public void SuccessHandler(Accounts account)
+        {
+            var roleNames = GetRoleNames(account);
+            if (roleNames.Count == 1)
+            {
+                LoadPage(account, roleNames[0]);
+            }
+            else
+            {
+                MessageBoxResult result = MessageBox.Show("Войти как сотрудник?", "Выбор роли", MessageBoxButton.YesNo);
+
+                switch (result)
+                {
+                    case MessageBoxResult.Yes:
+                        LoadPage(account, roleNames.Where(rn => rn == "Сотрудник").FirstOrDefault());
+                        break;
+                    case MessageBoxResult.No:
+                        LoadPage(account, roleNames.Where(rn => rn == "Клиент").FirstOrDefault());
+                        break;
+
+                }
+            }
+        }
+ 
+
+        public Accounts CheckUserPassword(string login,string password)
+        {
+            using (var db = Helper.GetContext())
+            {
+                var account = db.Accounts.Where(a => a.login == login && a.password_hash == password).FirstOrDefault();
+                return account;
+            }
+        }
+        public Accounts CheckUserLogin(string login)
+        {
+            using (var db = Helper.GetContext())
+            {
+                var account = db.Accounts.Where(a => a.login == login).FirstOrDefault();
+                return account;
+
+            }
+        }
+
+        
         private void LoadPage(Accounts account, string role)
         {
-            click = 0;
+            ClearInput();
+            Lock.Reset();
+            tbWarning.Visibility = Visibility.Collapsed;
+            tblCaptcha.Visibility = Visibility.Hidden;
+            tbCaptcha.Visibility = Visibility.Hidden;
             NavigationService.Navigate(new Client(account, role));
 
 

@@ -27,6 +27,10 @@ namespace PZ6.Pages
             if (account != null) {
                 Welcome.Text = $"Привет {account.login}.Вы вошли как {role}";
             }
+            else
+            {
+                Welcome.Text = $"Привет, незнакомец";
+            }
         }
     }
 }

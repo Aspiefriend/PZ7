@@ -30,6 +30,18 @@
             <TextBox x:Name="tbCaptcha" 
                      Visibility="Hidden"
                      Width="200"/>
+            <TextBlock x:Name="tbWarning"
+                       Text=""
+                     Visibility="Collapsed"
+                       HorizontalAlignment="Center"/>
+            <TextBlock x:Name="tbLockout"
+           Text=""
+         Visibility="Collapsed"
+           HorizontalAlignment="Center"/>
+            <TextBlock x:Name="tbTime"
+  Text=""
+Visibility="Collapsed"
+  HorizontalAlignment="Center"/>
 
             <StackPanel Orientation="Horizontal"
                         HorizontalAlignment="Center"

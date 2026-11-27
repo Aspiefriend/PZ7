@@ -48,6 +48,7 @@
         <AssociationConnector Association="ateilerModel.FK__OrderStat__id_or__151B244E" ManuallyRouted="false" />
         <AssociationConnector Association="ateilerModel.FK__Payments__id_ord__10566F31" ManuallyRouted="false" />
         <AssociationConnector Association="ateilerModel.FK__OrderStat__id_st__160F4887" ManuallyRouted="false" />
+        <EntityTypeShape EntityType="ateilerModel.LoginHistory" Width="1.5" PointX="3.375" PointY="0.75" />
       </Diagram>
     </edmx:Diagrams>
   </edmx:Designer>
